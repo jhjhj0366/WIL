@@ -8,4 +8,5 @@
 ### 문서를 읽고
 - [JVM](https://github.com/this-is-spear/TIL/wiki/JVM-%EB%8F%99%EC%9E%91-%EC%9B%90%EB%A6%AC)
 ### 활용해보기 위해
-- [TDD](https://github.com/this-is-spear/TIL/wiki/%EC%9E%90%EB%8F%99%EC%B0%A8-%EA%B2%BD%EC%A3%BC-%EA%B2%8C%EC%9E%84%EA%B3%BC-TDD)
+- [TDD](https://github.com/this-is-spear/TIL/wiki/TDD)
+- [자바 플레이그라운드](https://github.com/this-is-spear/TIL/wiki/NEXT-STEP-%EC%9E%90%EB%B0%94-%ED%94%8C%EB%A0%88%EC%9D%B4%EA%B7%B8%EB%9D%BC%EC%9A%B4%EB%93%9C)

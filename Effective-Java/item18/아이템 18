@@ -1,0 +1,298 @@
+# 아이템 18.  상속보다는 컴포지션을 사용하라
+## 목록
+- 상속을 지양하라
+- 상속의 잘못된 사용
+- 문제 그리고 문제
+- 상속이 아닌 컴포지션
+- 그럼에도 상속을 사용하는 경우
+- 마지막으로
+
+## 상속을 지양하라
+### 상속을 사용한 코드
+상속은 코드를 재사용하는 강력한 수단이만, 잘못 사용하면  오류를 내기 쉬운 소프트웨어를 만들게 된다.
+
+### 상속을 활용할 때 오류를 범하지 않기 위한 방법
+1. 상위 클래스와 하위 클래스를 모두 같은 프로그래머가 통제하는 패키지 않에서라면 상속도 안전한 방법이다.
+2. 확장할 목적으로 설계되었고, 문서화도 잘된 클래스([[아이템 19.]])도 마찬가지로 안전하다.
+
+> 하지만 패키지 경계를 넘어 다른 패키지의 구체 클래스를 상속하는 일은 위험하다. 
+
+### 상속의 문제점 - 메서드 호출과 달리 상속은 캡슐화를 뜨린다.
+다르게 말하면 상위 클래스가 어떻게 구현되느냐에 따라 하위 클래스의 동작에 이상이 생길 수 있다. 상위 클래스는 릴리스마다 내부 구현이 달라질 수 있으며, **그 여파로 코드 한 줄 건드리지 않은 클래스가 오작동할 수 있다.** 이러한 이유로 상위 클래스는 상위 클래스의 변화에 발맞춰 수정되어야 하는 번거로움이 생긴다.
+
+> 이번 아이템에서 논하는 문제는 인터페이스의 상속과는 무관하다.
+
+## 상속의 잘못된 사용
+HashSet의 성능을 높이기 위해 생성된 이후 원소가 몇개 더해졌는지 파악해야 한다. 그래서 HashSet를 상속한 클래스를 만들어 확장했다.
+
+```java
+public class InstrumentedHashSet<E> extends HashSet<E> {  
+  
+    private int addCount = 0;  
+  
+    public InstrumentedHashSet() {  
+    }  
+  
+    @Override  
+    public boolean add(E e) {  
+        addCount++;  
+        return super.add(e);  
+    }  
+  
+    @Override  
+    public boolean addAll(Collection<? extends E> c) {  
+        addCount += c.size();  
+        return super.addAll(c);  
+    }  
+  
+    public int getAddCount() {  
+        return addCount;  
+    }  
+  
+}
+```
+
+> 잘 구현된 것처럼 보이지만, 제대로 동작하지 않는다.
+
+addCount의 값을 증가시켜주는 코드가 3 번 호출되리라 생각하지만 addAll 메서드에서 컬렉션을 인자로 받아 하나씩 add 메서드로 처리하다보니 `addCount += c.size()` 한 번, 그리고 `addCount++` 세 번 호출이 된다.
+
+```java
+class InstrumentedHashSetTest {  
+  
+    @Test  
+    @DisplayName("문제가 발생하는 상황")  
+    void getSize() {  
+        InstrumentedHashSet<String> s = new InstrumentedHashSet<>();  
+        s.addAll(List.of("틱", "틱틱", "펑"));  
+
+		// print 6
+        System.out.println("s.getAddCount() : " + s.getAddCount());  
+		// print 3
+		System.out.println("s.size() : " + s.size());  
+  
+        Assertions.assertNotEquals(s.getAddCount(), s.size());  
+    }  
+}
+```
+
+### 해결 방법 1과 한계
+- **해결 방법 1**
+	- 이 경우 하위 클래스에서 addAll 메서드를 재정의하지 않으면 문제를 고칠 수 있다.
+- **한계**
+	- 당장은 제대로 동작할지 모르나 HashSet의 addAll이 add 메서드를 이용해 구현했음을 가정한 해법이라는 한계를 지닌다.
+
+> 이처럼 자신의 다른 부분을 사용하는 자가 사용 요부는 해당 클래스 내부 구현 방식에 해당하며, 자바 플랫폼 전반적인 정책인지 파악하지 어렵기 때문에 다음 릴리스에서도 유지될지는 알 수 없다.
+
+### 해결 방법 2와 한계
+- **해결 방법 2**
+	- addAll 메서드를 다른 방식으로 재정의할 수 있다. 예를 들어 주진 컬렉션을 순회하며 원소 하나당 add 메서드를 한 번만 호출하는 것이다.
+- **한계**
+	- 상위 클래스의 메서드 동작을 다시 구현하는데 리소스가 많이 소비되고, 오류를 범하기 쉽고, 성능을 떨어뜨릴 수 있다.
+	- 하위 클래스에서는 접근할 수 없는 private 필드를 써야하는 상황이라면 이 방식으로는 구현 자체가 불가능하다.
+
+
+## 문제 그리고 문제
+
+### 문제 상황 1
+보안 때문에 컬렉션에 추가된 모든 원소가 특정 조건을 만족해야만 하는 프로그램인 경우를 생각해 볼 때, 컬렉션을 상속해 원소를 추가하는 모든 메서드를 재정의해 필요 조건을 먼저 검사하면 될 것 처럼 보이지만, 이 방식이 통하는 범위는 상위 클래스에 추가적인 add 메서드가 만들어지기 전까지이다.
+
+> 다음 릴리스에서 새로운 add 기능이 추가되면 하위 클래스에서 재정의하지 못한 새로운 메서드를 통해 허용되지 않은 원소가 추가될 가능성이 생긴다.
+
+### 문제 상황 2
+실제로 컬렉션 프레임워크 이전부터 존재하던 HashTable과 Vector를 컬렉션 프레임워크에 포함시키자 이와 관련한 보안 구멍들을 수정해야 하는 사태가 벌어졌다.
+
+### 문제 상황에 대한 해결방법
+- **해결 방법**
+	- 두 문제 모두 메서드 재정의가 원인이기 때문에 클래스를 확장하더라도 메서드를 재정의하는 대신 새로운 메서드를 추가하면 괜찮으리라 생각할 수 있다. 이 방식이 훨씬 한전한 것은 맞지만, 위험이 없진 않다.
+- **해결 방법에 대한 문제 1**
+	- 다음 릴리스에서 상위 클래스에 새 메서드가 추가됐는데, 하위 클래스에 추가한 메서드와 시그니처가 같고 반환 타입이 다르다면 하위 클래스는 컴파일조차 되지 않을 것이다. 반환 타입이 같은 경우에도 앞의 문제 상황들과 똑같은 상황에 부딪힐 것이다.
+- **해결 방법에 대한 문제 2**
+	- 이 메서드를 작성할 때, 상위 클래스의 메서드는 존재하지도 않았으니, 하위 클래스에서 작성한 메서드는 상위 클래스의 메서드가 요구하는 규약을 만족하지 못할 가능성이 크다.
+
+## 상속이 아닌 컴포지션을 사용하자
+### 컴포지션
+위와 같은 모든 문제를 해결할 수 있는 방법은 컴포지션을 사용한 방법이다. 기존 클래스를 확장하는 대신, 새로운 클래스를 만들고, private 필드로 기존 클래스의 인스턴스를 참조하게 하면 된다.
+
+> 기존 클래스가 새로운 클래스의 구성요소로 쓰인다는 뜻에서 컴포지션(composition : 구성)이라 한다.
+
+새 클래스의 인스턴스 메서드들은 기존 클래스의 대응하는 메서드를 호출해 결과를 반환한다. 이 방식을 전달(forwading)이라 하며, 새 클래스의 메서들을 전달 메서드(forwarding method)라 부른다.
+
+### 컴포지션의 효과
+컴포지션을 사용하게 되면 새로운 클래스는 기존 클래스의 내부 구현 방식에서 벗어나며, 기존 클래스에 새로운 메서드가 추가되더라도 전혀 영향받지 않는다. 
+
+### 컴포지션 사용
+구체적인 예시를 위해 하위 클래슬르 컴포지션과 전달 방식으로 다시 구현했다.
+
+ForwardingSet 구현
+```java
+  
+public class ForwardingSet<E> implements Set<E> {  
+    private final Set<E> s;  
+  
+    public ForwardingSet(Set<E> s) {  
+        this.s = s;  
+    }  
+  
+    @Override  
+    public int size() {  
+        return s.size();  
+    }  
+  
+    @Override  
+    public boolean isEmpty() {  
+        return s.isEmpty();  
+    }  
+  
+    @Override  
+    public boolean contains(Object o) {  
+        return s.contains(o);  
+    }  
+  
+    @Override  
+    public Iterator<E> iterator() {  
+        return s.iterator();  
+    }  
+  
+    @Override  
+    public Object[] toArray() {  
+        return s.toArray();  
+    }  
+  
+    @Override  
+    public <T> T[] toArray(T[] a) {  
+        return s.toArray(a);  
+    }  
+  
+    @Override  
+    public boolean add(E e) {  
+        return s.add(e);  
+    }  
+  
+    @Override  
+    public boolean remove(Object o) {  
+        return s.remove(o);  
+    }  
+  
+    @Override  
+    public boolean containsAll(Collection<?> c) {  
+        return s.containsAll(c);  
+    }  
+  
+    @Override  
+    public boolean addAll(Collection<? extends E> c) {  
+        return s.addAll(c);  
+    }  
+  
+    @Override  
+    public boolean retainAll(Collection<?> c) {  
+        return s.retainAll(c);  
+    }  
+  
+    @Override  
+    public boolean removeAll(Collection<?> c) {  
+        return s.removeAll(c);  
+    }  
+  
+    @Override  
+    public void clear() {  
+        s.clear();  
+    }  
+}
+```
+
+ForwardingSet을 상속받은 InstrumentedHashSet 구현
+
+```java
+public class InstrumentedHashSet<E> extends ForwardingSet<E> {  
+    private int addCount = 0;  
+  
+    public InstrumentedHashSet(Set<E> s) {  
+        super(s);  
+    }  
+  
+    @Override  
+    public boolean add(E e) {  
+        addCount++;  
+        return super.add(e);  
+    }  
+  
+    @Override  
+    public boolean addAll(Collection<? extends E> c) {  
+        addCount += c.size();  
+        return super.addAll(c);  
+    }  
+  
+    public int getAddCount() {  
+        return addCount;  
+    }  
+  
+}
+```
+
+결과
+
+```java
+class InstrumentedHashSetTest {  
+  
+    @Test  
+    @DisplayName("문제가 발생하는 상황")  
+    void getSize() {  
+        InstrumentedHashSet<String> s = new InstrumentedHashSet<>(new HashSet<>());  
+        s.addAll(List.of("틱", "틱틱", "펑"));  
+  
+        Assertions.assertEquals(s.getAddCount(), s.size());  
+    }  
+}
+```
+
+> InstrumentedHashSet 같은 클래스를 래퍼 클래스라 하며 다른 Set에 계측 기능을 덧씌운다는 뜻에서 데코레이터 패턴이라 한다.
+
+컴포지션과 전달의 조합은 넓은 의미로 위임(delegation)이라 부른다. 단, 엄밀히 따지면 래퍼 객체가 내부 객체에 자기 자신의 참조를 넘기는 경우만 위임에 해당한다.
+
+### 컴포지션 주의점
+#### 콜백과는 어울리지 않는다.
+래퍼 클래스는 단점이 없지만 콜백 프레임워크와는 어울리지 않는다는 점만 주의하면 된다.
+
+> 콜백 프레임워크는 콜백을 사용하는 프레임워크를 의미한다. 대부분의 GUI 프레임워크는 콜백을 사용한다. 기본 패턴은 다른 클래스를 초기화할 때 핸들러 클래스의 인스턴스(또는 때로는 메서드 참조)를 전달한다. 특정 이벤트가 발생하면 "핸들러" 클래스가 이벤트를 처리하기 위해 호출한다.
+> 
+> [참고자료 - 스택 오버플로우](https://softwareengineering.stackexchange.com/questions/117434/what-are-callback-frameworks)
+
+> 상위 클래스에서는 공통 기능이 구현되어 있고, 하위 클래스에 콜백 함수를 구현하게 되는데, 콜백 함수를 사용하는 하위 클래스에서 컴포지션을 사용하긴 어렵다는 의미로 핵석할 수 있다.
+> 
+> [참고자료 2 - # 라이브러리 & 프레임워크 & 콜백](https://purple-wood-lights.tistory.com/6)
+
+콜백 프레임워크에서는 자기 자신의 참조를 다른 객체에 넘겨 다음 호출때 사용하도록 한다.
+
+내부 객체는 자신을 감싸는 래퍼의 존재를 모르니 대신 자신의 참조를 넘기고, 콜백 때는 래퍼가 아닌 내부 객체를 호출하게 되는데 이를 SELF 문제라 한다.
+
+#### [SELF 문제](https://stackoverflow.com/questions/28254116/wrapper-classes-are-not-suited-for-callback-frameworks)
+[[SELF 문제]]에서 확인 가능
+
+#### 성능 문제
+전달 메서드가 성능에 주는 영향이나 래퍼 객체가 메모리 사용량에 주는 양향을 걱정하는 사람도 있지만, 별다른 영향이 없다.
+
+> 재사용할 수 있는 전달 클래스를 인터페이스당 하나씩 생성하면 원하는 기능을 덧 씌우는 전달 클래스들을 손쉽게 구현할 수 있다. 좋은 예로 구아바는 모든 컬렉션 인터페이스용 전달 메서드를 전부 구현했다.
+
+## 그럼에도 상속을 사용하는 경우
+### 상속은 `진짜` 하위 타입에만 사용한다.
+상위 클래스가 하위 클래스와 is-a 관계일 때만 클래스를 상속하게 구현해야 한다. 상속으로 구현하기 전 하위클래스가 상위클래스인가를 자문해야 한다.
+
+자바 플랫폼 라이브러리에서도 이 원칙을 명백히 위반한 클래스들을 찾아 볼 수 있다. 예를 들어 스택은 벡터가 아니므로 Stack은 Vector를 확장해서는 안됐다. 마찬가지로 속성 목록(Properties)도 해시테이블(HashTable)이 아니므로 확장해서는 안됐다.
+
+컴포지션을 써야할 상황에서 상속을 사용하는 건 내부 구현을 불필요하게 노출하는 꼴이다. 더 큰 문제는 노출된 내부에 직접 접근할 수 있다는 문제점이다. 그렇기 때문에 진짜 하위 타입이 아닌 경우는 상속을 사용하지 말자.
+
+### 자문하라
+컴포지션 대신 상속을 사용하기로 결정했다면 마지막으로 자문을 할 필요가 있다.
+
+자문 목록
+- 확장하려는 클래스의 API에는 아무 결함이 없는가?
+- 결함이 있다면 이 결함을 클래스의 API까지 전파되도 괜찮은가?
+
+> 컴포시션으로 이런 결함을 숨기는 새로운 API를 설계할 수 있지만, 상속은 상위 클래스의 API를 결함까지 그대로 승계한다.
+
+## 마지막으로
+1. 상속은 강력하지만 캡슐화를 해치는 문제를 가진다.
+2. 상속은 상위 클래스와 하위 클래스가 순수한 is-a 관계일 때만 사용한다.
+	> is-a 관계일 때, 하위 클래스와 상위 클래스의 패키지가 다른 경우, 상위 클래스가 확장성있게 설계되지 않은 경우는 문제가 발생한다.
+3. 상속의 취약점을 피하려면 상속 대신 컴포지션과 전달을 사용하자
+	> 특히 래퍼 클래스로 구현할 적당한 인터페이스가 있다면 더욱 권장한다. 래퍼 클래스는 하위 클래스보다 견고하고 강력한다.

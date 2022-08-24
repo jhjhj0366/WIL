@@ -8,7 +8,7 @@
 
 > IR Generator -> Optimizer -> Code Generator
 
-![[Pasted image 20220824185328.png]]
+![image](3.png)
 
 > JIT 컴파일러는 바이트코드를 중간 단계 표현인 IR로 변환해 치적화를 수행하고 그 다음 네이티브 코드를 생성한다.
 
@@ -24,7 +24,7 @@
 #### 서버 VM, 클라이언트 VM
 핫 스팟 VM은 서버 VM과  클라이언트 VM으로 나뉘어져 있고, 각 다른 JIT 컴파일러를 사용한다. 클라이언트 VM과 서버 VM은 각 오라클 핫스팟 VM을 실행하기 위해 -client, -server 옵션으로 실행한다.
 
-![[Pasted image 20220824190229.png]]
+![iamge](4.png)
 
 > 서버 VM과 클라이언트 VM 둘 다 동일한 런타임을 사용하지만, 서버 VM에서 사용하는 Advanced Dynamic Optimizing Compiler가 더 복잡하고 다양한 성능 최적화 기법을 사용하고 있다.
 

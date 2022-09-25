@@ -40,7 +40,7 @@ Note: Some messages have been simplified; recompile with -Xdiags:verbose to get 
 #### 매개 타입을 Object로 사용하는 경우
 컴파일 타임에서 문제가 발생해서 쉽게 파악할 수 있다.
 
-![스크린샷 2022-09-24 오후 11.48.46.png](스크린샷 2022-09-24 오후 11.48.46.png)
+![1](/Effective-Java/item26/1.png)
 
 #### 코드가 의미하는 것
 로 타입이 아닌 매개 변수 타입을 넣은 `List<Object>`는 모든 타입을 허용한다는 의사를 컴파일러에 명확히 전달한 것이다. 매개변수로 List를 받는 메서드에 `List<String>` 타입을 넘길 수 있지만, `List<Object>`를 받는 메서드에는 `List<String>`을 넘길 수 없다. 즉, `List<String>`은 List의 하위 타입이지만, `List<Object>`의 하위 타입은 아니다.
@@ -50,7 +50,7 @@ Note: Some messages have been simplified; recompile with -Xdiags:verbose to get 
 
 로 타입 컬렉션에는 아무 원소나 넣을 수 있으나 타입 불변식을 훼손해 런타임 오류가 발생하기 쉽다. 반면, `Collection<?>`에는 null외에 어떤 원소도 넣을 수 없기 때문에 값을 추가하려면 컴파일 오류가 발생해 쉽게 문제를 해결할 수 있다.
 
-![스크린샷 2022-09-24 오후 11.52.59.png](스크린샷 2022-09-24 오후 11.52.59.png)
+![2](/Effective-Java/item26/2.png)
 
 ```ad-note
 비한정적 와일드 카드를 사용하면 컬렉션에서 꺼낼 수 있는 개체의 타입도 전혀 알 수 없기 때문에 이런 제약사항을 해결하려면 한정적 와일드 카드를 사용하면 된다.
